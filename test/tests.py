@@ -6,6 +6,7 @@ from testy_jednostkowe_functions import (
     count_vowels,
     calculate_discount,
     flatten_list,
+    word_frequency,
 )
 
 
@@ -83,3 +84,15 @@ def test_calculate_discount(price, discount, expected):
 def test_flatten_list(nested_list, expected):
     assert flatten_list(nested_list) == expected
 
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("To be or not to be", {"to": 2, "be": 2, "or": 1, "not": 1}),
+        ("Hello, hello!", {"hello": 2}),
+        ("", {}),
+        ("Python Python python", {"python": 3}),
+        ("Ala ma kota, a kot ma Ale.", {"ala": 1, "ma": 2, "kota": 1, "a": 2, "kot": 1, "ale": 1}),
+    ],
+)
+def test_word_frequency(text, expected):
+    assert word_frequency(text) == expected

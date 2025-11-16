@@ -1,4 +1,7 @@
 
+import re
+from collections import Counter
+
 
 def is_palindrome(s: str) -> bool:
     """Check if a string is a palindrome."""
@@ -37,7 +40,15 @@ def flatten_list(nested_list):
 
 
 def word_frequency(text: str) -> dict:
-    """Return a dictionary with word frequencies in the given text."""
-    from collections import Counter
-    words = text.lower().split()
+    """Return a dictionary with word frequencies, case-insensitive and ignoring punctuation."""
+    words = re.findall(r"\w+", text.lower(), re.UNICODE)
     return dict(Counter(words))
+
+def is_prime(n: int) -> bool:
+    """Check if a number is prime."""
+    if n < 2:
+        return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0:
+            return False
+    return True
