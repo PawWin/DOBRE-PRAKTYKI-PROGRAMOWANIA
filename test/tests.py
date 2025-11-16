@@ -7,6 +7,7 @@ from testy_jednostkowe_functions import (
     calculate_discount,
     flatten_list,
     word_frequency,
+    is_prime,
 )
 
 
@@ -91,8 +92,25 @@ def test_flatten_list(nested_list, expected):
         ("Hello, hello!", {"hello": 2}),
         ("", {}),
         ("Python Python python", {"python": 3}),
-        ("Ala ma kota, a kot ma Ale.", {"ala": 1, "ma": 2, "kota": 1, "a": 2, "kot": 1, "ale": 1}),
+        ("Ala ma kota, a kot ma Ale.", {"ala": 1, "ma": 2, "kota": 1, "a": 1, "kot": 1, "ale": 1}),
     ],
 )
 def test_word_frequency(text, expected):
     assert word_frequency(text) == expected
+
+
+@pytest.mark.parametrize(
+    "n, expected",
+    [
+        (2, True),
+        (3, True),
+        (4, False),
+        (0, False),
+        (1, False),
+        (5, True),
+        (97, True),
+        
+    ],
+)
+def test_is_prime(n, expected):
+    assert is_prime(n) is expected
