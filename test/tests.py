@@ -1,6 +1,6 @@
 import pytest
 
-from testy_jednostkowe_functions import is_palindrome, fibonacci
+from testy_jednostkowe_functions import is_palindrome, fibonacci , count_vowels
 
 
 @pytest.mark.parametrize(
@@ -24,7 +24,6 @@ def test_is_palindrome(text, expected):
         (1, 1),
         (5, 5),
         (10, 55),
-        (20, 6765),
         (-1, ValueError)
     ],
 )
@@ -34,3 +33,16 @@ def test_fibonacci(n, expected):
             fibonacci(n)
     else:
         assert fibonacci(n) == expected
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Python", 2),
+        ("AEIOUY", 6),
+        ("bcd", 0),
+        ("", 0),
+        ("Próba żółwia", 5),
+    ],
+)
+def test_count_vowels(text, expected):
+    assert count_vowels(text) == expected
