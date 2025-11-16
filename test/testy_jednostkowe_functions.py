@@ -18,3 +18,26 @@ def count_vowels(s: str) -> int:
     """Count the number of vowels in a string (case-insensitive, incl. Polish chars)."""
     vowels = 'aeiouyąęóAEIOUYĄĘÓ'
     return sum(1 for char in s if char in vowels)
+
+def calculate_discount(price: float, discount: float) -> float:
+    """Return the price after applying discount in [0, 1]; raise for invalid discount."""
+    if discount < 0 or discount > 1:
+        raise ValueError("discount must be between 0 and 1")
+    return price * (1 - discount)
+
+def flatten_list(nested_list):
+    """Flatten a nested list into a single-level list."""
+    flat = []
+    for item in nested_list:
+        if isinstance(item, list):
+            flat.extend(flatten_list(item))
+        else:
+            flat.append(item)
+    return flat
+
+
+def word_frequency(text: str) -> dict:
+    """Return a dictionary with word frequencies in the given text."""
+    from collections import Counter
+    words = text.lower().split()
+    return dict(Counter(words))
