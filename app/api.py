@@ -10,6 +10,7 @@ app = FastAPI()
 
 
 BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent / "database"
 DB_DIR = BASE_DIR / "database"
 DB_FILE = DB_DIR / "movies.sqlite"
 DATABASE_URL = f"sqlite:///{DB_FILE}"
@@ -99,7 +100,7 @@ def init_db() -> None:
         seed_table(
             session,
             Movie,
-            DB_DIR / "movies.csv",
+            DATA_DIR / "movies.csv",
             lambda row: {
                 "id": _to_int(row["movieId"]),
                 "title": row["title"],
@@ -109,7 +110,7 @@ def init_db() -> None:
         seed_table(
             session,
             Link,
-            DB_DIR / "links.csv",
+            DATA_DIR / "links.csv",
             lambda row: {
                 "movie_id": _to_int(row["movieId"]),
                 "imdb_id": row.get("imdbId") or None,
@@ -119,7 +120,7 @@ def init_db() -> None:
         seed_table(
             session,
             Rating,
-            DB_DIR / "ratings.csv",
+            DATA_DIR / "ratings.csv",
             lambda row: {
                 "user_id": _to_int(row["userId"]),
                 "movie_id": _to_int(row["movieId"]),
@@ -130,7 +131,7 @@ def init_db() -> None:
         seed_table(
             session,
             Tag,
-            DB_DIR / "tags.csv",
+            DATA_DIR / "tags.csv",
             lambda row: {
                 "user_id": _to_int(row["userId"]),
                 "movie_id": _to_int(row["movieId"]),
@@ -179,4 +180,4 @@ def get_tags(db: Session = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.api:app", host="0.0.0.0", port=8000, reload=True)
