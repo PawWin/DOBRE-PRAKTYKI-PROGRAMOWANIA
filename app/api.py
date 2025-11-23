@@ -178,6 +178,13 @@ def get_tags(db: Session = Depends(get_db)):
 
 
 if __name__ == "__main__":
+    import sys
+
+    # Ensure project root is on sys.path so uvicorn reload can import "app.api:app".
+    root_dir = BASE_DIR.parent
+    if str(root_dir) not in sys.path:
+        sys.path.append(str(root_dir))
+
     import uvicorn
 
     uvicorn.run("app.api:app", host="0.0.0.0", port=8000, reload=True)
