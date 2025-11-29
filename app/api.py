@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
-#[#86c6u57mr]
+
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
