@@ -145,44 +145,6 @@ def get_ratings(db: Session = Depends(get_db)):
     ratings = db.query(Rating).all()
     return [serialize_model(rating) for rating in ratings]
 
-
-@app.post("/ratings", status_code=status.HTTP_201_CREATED)
-def create_rating(rating_in: RatingCreate, db: Session = Depends(get_db)):
-    _ensure_movie_exists(db, rating_in.movie_id)
-    rating = Rating(**_dump(rating_in))
-    db.add(rating)
-    db.commit()
-    db.refresh(rating)
-    return serialize_model(rating)
-
-
-@app.get("/ratings/{rating_id}")
-def get_rating(rating_id: int, db: Session = Depends(get_db)):
-    rating = _get_rating_or_404(rating_id, db)
-    return serialize_model(rating)
-
-
-@app.put("/ratings/{rating_id}")
-def update_rating(rating_id: int, rating_in: RatingUpdate, db: Session = Depends(get_db)):
-    rating = _get_rating_or_404(rating_id, db)
-    update_data = _dump(rating_in, exclude_unset=True)
-    if "movie_id" in update_data:
-        _ensure_movie_exists(db, update_data["movie_id"])
-    for field, value in update_data.items():
-        setattr(rating, field, value)
-    db.commit()
-    db.refresh(rating)
-    return serialize_model(rating)
-
-
-@app.delete("/ratings/{rating_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_rating(rating_id: int, db: Session = Depends(get_db)):
-    rating = _get_rating_or_404(rating_id, db)
-    db.delete(rating)
-    db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 @app.get("/tags")
 def get_tags(db: Session = Depends(get_db)):
     tags = db.query(Tag).all()
