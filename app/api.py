@@ -11,9 +11,9 @@ ROOT_DIR = BASE_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from app.db import get_db, init_db, serialize_model, _dump
+from app.db import get_db, init_db, serialize_model
 from app.schemas import (LinkCreate, LinkUpdate, MovieCreate, MovieUpdate,
-                         RatingCreate, RatingUpdate, TagCreate, TagUpdate)
+                         RatingCreate, RatingUpdate, TagCreate, TagUpdate, _dump)
 from app.models import Link, Movie, Rating, Tag
 
 app = FastAPI()
