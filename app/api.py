@@ -189,6 +189,43 @@ def get_tags(db: Session = Depends(get_db)):
     return [serialize_model(tag) for tag in tags]
 
 
+@app.post("/tags", status_code=status.HTTP_201_CREATED)
+def create_tag(tag_in: TagCreate, db: Session = Depends(get_db)):
+    _ensure_movie_exists(db, tag_in.movie_id)
+    tag = Tag(**_dump(tag_in))
+    db.add(tag)
+    db.commit()
+    db.refresh(tag)
+    return serialize_model(tag)
+
+
+@app.get("/tags/{tag_id}")
+def get_tag(tag_id: int, db: Session = Depends(get_db)):
+    tag = _get_tag_or_404(tag_id, db)
+    return serialize_model(tag) 
+
+
+@app.put("/tags/{tag_id}")
+def update_tag(tag_id: int, tag_in: TagUpdate, db: Session = Depends(get_db)):
+    tag = _get_tag_or_404(tag_id, db)
+    update_data = _dump(tag_in, exclude_unset=True)
+    if "movie_id" in update_data:
+        _ensure_movie_exists(db, update_data["movie_id"])
+    for field, value in update_data.items():
+        setattr(tag, field, value)
+    db.commit()
+    db.refresh(tag)
+    return serialize_model(tag)
+
+
+@app.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_tag(tag_id: int, db: Session = Depends(get_db)):
+    tag = _get_tag_or_404(tag_id, db)
+    db.delete(tag)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 if __name__ == "__main__":
     import sys
 
