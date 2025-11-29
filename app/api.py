@@ -1,8 +1,9 @@
 import sys
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from sqlalchemy.orm import Session
+
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
@@ -10,35 +11,66 @@ ROOT_DIR = BASE_DIR.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
-from app.db import get_db, init_db, serialize_model  # noqa: E402
-from app.models import Link, Movie, Rating, Tag  # noqa: E402
+from app.db import get_db, init_db, serialize_model, _dump
+from app.schemas import (LinkCreate, LinkUpdate, MovieCreate, MovieUpdate,
+                         RatingCreate, RatingUpdate, TagCreate, TagUpdate)
+from app.models import Link, Movie, Rating, Tag
 
 app = FastAPI()
 init_db()
+
+def _get_movie_or_404(movie_id: int, db: Session) -> Movie:
+    movie = db.query(Movie).filter(Movie.id == movie_id).first()
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie
+
+
+def _get_link_or_404(movie_id: int, db: Session) -> Link:
+    link = db.query(Link).filter(Link.movie_id == movie_id).first()
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found")
+    return link
+
+
+def _get_rating_or_404(rating_id: int, db: Session) -> Rating:
+    rating = db.query(Rating).filter(Rating.id == rating_id).first()
+    if not rating:
+        raise HTTPException(status_code=404, detail="Rating not found")
+    return rating
+
+
+def _get_tag_or_404(tag_id: int, db: Session) -> Tag:
+    tag = db.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    return tag
+
+
+def _ensure_movie_exists(db: Session, movie_id: int) -> None:
+    db_movie = db.query(Movie).filter(Movie.id == movie_id).first()
+    if not db_movie:
+        raise HTTPException(status_code=400, detail="Movie does not exist")
 
 
 @app.get("/")
 def hello_world():
     return {"hello": "world"}
 
-
 @app.get("/movies")
 def get_movies(db: Session = Depends(get_db)):
     movies = db.query(Movie).all()
     return [serialize_model(movie) for movie in movies]
-
 
 @app.get("/links")
 def get_links(db: Session = Depends(get_db)):
     links = db.query(Link).all()
     return [serialize_model(link) for link in links]
 
-
 @app.get("/ratings")
 def get_ratings(db: Session = Depends(get_db)):
     ratings = db.query(Rating).all()
     return [serialize_model(rating) for rating in ratings]
-
 
 @app.get("/tags")
 def get_tags(db: Session = Depends(get_db)):
