@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
-
+#[#86c6u57mr]
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
 
@@ -57,10 +57,45 @@ def _ensure_movie_exists(db: Session, movie_id: int) -> None:
 def hello_world():
     return {"hello": "world"}
 
+
 @app.get("/movies")
 def get_movies(db: Session = Depends(get_db)):
     movies = db.query(Movie).all()
     return [serialize_model(movie) for movie in movies]
+
+
+@app.post("/movies", status_code=status.HTTP_201_CREATED)
+def create_movie(movie_in: MovieCreate, db: Session = Depends(get_db)):
+    movie = Movie(**_dump(movie_in))
+    db.add(movie)
+    db.commit()
+    db.refresh(movie)
+    return serialize_model(movie)
+
+
+@app.get("/movies/{movie_id}")
+def get_movie(movie_id: int, db: Session = Depends(get_db)):
+    movie = _get_movie_or_404(movie_id, db)
+    return serialize_model(movie)
+
+
+@app.put("/movies/{movie_id}")
+def update_movie(movie_id: int, movie_in: MovieUpdate, db: Session = Depends(get_db)):
+    movie = _get_movie_or_404(movie_id, db)
+    for field, value in _dump(movie_in, exclude_unset=True).items():
+        setattr(movie, field, value)
+    db.commit()
+    db.refresh(movie)
+    return serialize_model(movie)
+
+
+@app.delete("/movies/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_movie(movie_id: int, db: Session = Depends(get_db)):
+    movie = _get_movie_or_404(movie_id, db)
+    db.delete(movie)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
 
 @app.get("/links")
 def get_links(db: Session = Depends(get_db)):
