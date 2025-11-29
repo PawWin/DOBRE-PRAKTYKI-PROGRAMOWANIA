@@ -102,44 +102,6 @@ def get_links(db: Session = Depends(get_db)):
     links = db.query(Link).all()
     return [serialize_model(link) for link in links]
 
-
-@app.post("/links", status_code=status.HTTP_201_CREATED)
-def create_link(link_in: LinkCreate, db: Session = Depends(get_db)):
-    _ensure_movie_exists(db, link_in.movie_id)
-    existing = db.query(Link).filter(Link.movie_id == link_in.movie_id).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Link already exists for this movie")
-    link = Link(**_dump(link_in))
-    db.add(link)
-    db.commit()
-    db.refresh(link)
-    return serialize_model(link)
-
-
-@app.get("/links/{movie_id}")
-def get_link(movie_id: int, db: Session = Depends(get_db)):
-    link = _get_link_or_404(movie_id, db)
-    return serialize_model(link)
-
-
-@app.put("/links/{movie_id}")
-def update_link(movie_id: int, link_in: LinkUpdate, db: Session = Depends(get_db)):
-    link = _get_link_or_404(movie_id, db)
-    for field, value in _dump(link_in, exclude_unset=True).items():
-        setattr(link, field, value)
-    db.commit()
-    db.refresh(link)
-    return serialize_model(link)
-
-
-@app.delete("/links/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_link(movie_id: int, db: Session = Depends(get_db)):
-    link = _get_link_or_404(movie_id, db)
-    db.delete(link)
-    db.commit()
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
 @app.get("/ratings")
 def get_ratings(db: Session = Depends(get_db)):
     ratings = db.query(Rating).all()
