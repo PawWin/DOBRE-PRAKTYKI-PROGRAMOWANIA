@@ -38,3 +38,13 @@ class Tag(Base):
     movie_id = Column(Integer, ForeignKey("movies.id"), nullable=False, index=True)
     tag = Column(String, nullable=False)
     timestamp = Column(Integer, nullable=False)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    roles = Column(String, nullable=False, default="ROLE_USER")
