@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Sequence
 from dotenv import load_dotenv
 
@@ -41,7 +41,7 @@ class TokenValidationError(Exception):
 
 
 def create_access_token(*, subject: str, roles: Sequence[str], expires_delta: timedelta | None = None) -> str:
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     payload = {
         "sub": subject,
         "roles": list(roles),
@@ -69,7 +69,8 @@ def decode_token(token: str) -> dict:
     payload = json.loads(_urlsafe_b64decode(payload_segment))
     exp = payload.get("exp")
     if exp is not None:
-        if datetime.utcnow().timestamp() > float(exp):
+        now_ts = datetime.now(timezone.utc).timestamp()
+        if now_ts > float(exp):
             raise TokenValidationError("Token expired")
     return payload
 
