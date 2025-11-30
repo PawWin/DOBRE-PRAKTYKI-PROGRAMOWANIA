@@ -15,9 +15,13 @@ from app.db import get_db, init_db, serialize_model
 from app.schemas import (LinkCreate, LinkUpdate, MovieCreate, MovieUpdate,
                          RatingCreate, RatingUpdate, TagCreate, TagUpdate, _dump)
 from app.models import Link, Movie, Rating, Tag
+from app.endpoints.auth import get_current_user, router as auth_router
+from app.endpoints.user import router as user_router
 
 app = FastAPI()
 init_db()
+app.include_router(auth_router)
+app.include_router(user_router)
 
 def _get_movie_or_404(movie_id: int, db: Session) -> Movie:
     movie = db.query(Movie).filter(Movie.id == movie_id).first()
@@ -53,18 +57,18 @@ def _ensure_movie_exists(db: Session, movie_id: int) -> None:
         raise HTTPException(status_code=400, detail="Movie does not exist")
 
 
-@app.get("/")
+@app.get("/", dependencies=[Depends(get_current_user)])
 def hello_world():
     return {"hello": "world"}
 
 
-@app.get("/movies")
+@app.get("/movies", dependencies=[Depends(get_current_user)])
 def get_movies(db: Session = Depends(get_db)):
     movies = db.query(Movie).all()
     return [serialize_model(movie) for movie in movies]
 
 
-@app.post("/movies", status_code=status.HTTP_201_CREATED)
+@app.post("/movies", status_code=status.HTTP_201_CREATED, dependencies=[Depends(get_current_user)])
 def create_movie(movie_in: MovieCreate, db: Session = Depends(get_db)):
     movie = Movie(**_dump(movie_in))
     db.add(movie)
@@ -73,13 +77,13 @@ def create_movie(movie_in: MovieCreate, db: Session = Depends(get_db)):
     return serialize_model(movie)
 
 
-@app.get("/movies/{movie_id}")
+@app.get("/movies/{movie_id}", dependencies=[Depends(get_current_user)])
 def get_movie(movie_id: int, db: Session = Depends(get_db)):
     movie = _get_movie_or_404(movie_id, db)
     return serialize_model(movie)
 
 
-@app.put("/movies/{movie_id}")
+@app.put("/movies/{movie_id}", dependencies=[Depends(get_current_user)])
 def update_movie(movie_id: int, movie_in: MovieUpdate, db: Session = Depends(get_db)):
     movie = _get_movie_or_404(movie_id, db)
     for field, value in _dump(movie_in, exclude_unset=True).items():
@@ -89,7 +93,7 @@ def update_movie(movie_id: int, movie_in: MovieUpdate, db: Session = Depends(get
     return serialize_model(movie)
 
 
-@app.delete("/movies/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/movies/{movie_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_user)])
 def delete_movie(movie_id: int, db: Session = Depends(get_db)):
     movie = _get_movie_or_404(movie_id, db)
     db.delete(movie)
@@ -97,13 +101,13 @@ def delete_movie(movie_id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.get("/links")
+@app.get("/links", dependencies=[Depends(get_current_user)])
 def get_links(db: Session = Depends(get_db)):
     links = db.query(Link).all()
     return [serialize_model(link) for link in links]
 
 
-@app.post("/links", status_code=status.HTTP_201_CREATED)
+@app.post("/links", status_code=status.HTTP_201_CREATED, dependencies=[Depends(get_current_user)])
 def create_link(link_in: LinkCreate, db: Session = Depends(get_db)):
     _ensure_movie_exists(db, link_in.movie_id)
     existing = db.query(Link).filter(Link.movie_id == link_in.movie_id).first()
@@ -116,13 +120,13 @@ def create_link(link_in: LinkCreate, db: Session = Depends(get_db)):
     return serialize_model(link)
 
 
-@app.get("/links/{movie_id}")
+@app.get("/links/{movie_id}", dependencies=[Depends(get_current_user)])
 def get_link(movie_id: int, db: Session = Depends(get_db)):
     link = _get_link_or_404(movie_id, db)
     return serialize_model(link)
 
 
-@app.put("/links/{movie_id}")
+@app.put("/links/{movie_id}", dependencies=[Depends(get_current_user)])
 def update_link(movie_id: int, link_in: LinkUpdate, db: Session = Depends(get_db)):
     link = _get_link_or_404(movie_id, db)
     for field, value in _dump(link_in, exclude_unset=True).items():
@@ -132,7 +136,7 @@ def update_link(movie_id: int, link_in: LinkUpdate, db: Session = Depends(get_db
     return serialize_model(link)
 
 
-@app.delete("/links/{movie_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/links/{movie_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_user)])
 def delete_link(movie_id: int, db: Session = Depends(get_db)):
     link = _get_link_or_404(movie_id, db)
     db.delete(link)
@@ -140,13 +144,13 @@ def delete_link(movie_id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.get("/ratings")
+@app.get("/ratings", dependencies=[Depends(get_current_user)])
 def get_ratings(db: Session = Depends(get_db)):
     ratings = db.query(Rating).all()
     return [serialize_model(rating) for rating in ratings]
 
 
-@app.post("/ratings", status_code=status.HTTP_201_CREATED)
+@app.post("/ratings", status_code=status.HTTP_201_CREATED, dependencies=[Depends(get_current_user)])
 def create_rating(rating_in: RatingCreate, db: Session = Depends(get_db)):
     _ensure_movie_exists(db, rating_in.movie_id)
     rating = Rating(**_dump(rating_in))
@@ -156,13 +160,13 @@ def create_rating(rating_in: RatingCreate, db: Session = Depends(get_db)):
     return serialize_model(rating)
 
 
-@app.get("/ratings/{rating_id}")
+@app.get("/ratings/{rating_id}", dependencies=[Depends(get_current_user)])
 def get_rating(rating_id: int, db: Session = Depends(get_db)):
     rating = _get_rating_or_404(rating_id, db)
     return serialize_model(rating)
 
 
-@app.put("/ratings/{rating_id}")
+@app.put("/ratings/{rating_id}", dependencies=[Depends(get_current_user)])
 def update_rating(rating_id: int, rating_in: RatingUpdate, db: Session = Depends(get_db)):
     rating = _get_rating_or_404(rating_id, db)
     update_data = _dump(rating_in, exclude_unset=True)
@@ -175,7 +179,7 @@ def update_rating(rating_id: int, rating_in: RatingUpdate, db: Session = Depends
     return serialize_model(rating)
 
 
-@app.delete("/ratings/{rating_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/ratings/{rating_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_user)])
 def delete_rating(rating_id: int, db: Session = Depends(get_db)):
     rating = _get_rating_or_404(rating_id, db)
     db.delete(rating)
@@ -183,13 +187,13 @@ def delete_rating(rating_id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.get("/tags")
+@app.get("/tags", dependencies=[Depends(get_current_user)])
 def get_tags(db: Session = Depends(get_db)):
     tags = db.query(Tag).all()
     return [serialize_model(tag) for tag in tags]
 
 
-@app.post("/tags", status_code=status.HTTP_201_CREATED)
+@app.post("/tags", status_code=status.HTTP_201_CREATED, dependencies=[Depends(get_current_user)])
 def create_tag(tag_in: TagCreate, db: Session = Depends(get_db)):
     _ensure_movie_exists(db, tag_in.movie_id)
     tag = Tag(**_dump(tag_in))
@@ -199,13 +203,13 @@ def create_tag(tag_in: TagCreate, db: Session = Depends(get_db)):
     return serialize_model(tag)
 
 
-@app.get("/tags/{tag_id}")
+@app.get("/tags/{tag_id}", dependencies=[Depends(get_current_user)])
 def get_tag(tag_id: int, db: Session = Depends(get_db)):
     tag = _get_tag_or_404(tag_id, db)
     return serialize_model(tag) 
 
 
-@app.put("/tags/{tag_id}")
+@app.put("/tags/{tag_id}", dependencies=[Depends(get_current_user)])
 def update_tag(tag_id: int, tag_in: TagUpdate, db: Session = Depends(get_db)):
     tag = _get_tag_or_404(tag_id, db)
     update_data = _dump(tag_in, exclude_unset=True)
@@ -218,7 +222,7 @@ def update_tag(tag_id: int, tag_in: TagUpdate, db: Session = Depends(get_db)):
     return serialize_model(tag)
 
 
-@app.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(get_current_user)])
 def delete_tag(tag_id: int, db: Session = Depends(get_db)):
     tag = _get_tag_or_404(tag_id, db)
     db.delete(tag)
