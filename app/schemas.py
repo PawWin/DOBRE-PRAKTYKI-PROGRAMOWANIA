@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
 
 class MovieCreate(BaseModel):
     title: str
@@ -48,6 +49,22 @@ class TagUpdate(BaseModel):
     tag: str | None = None
     timestamp: int | None = None
 
+
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+    roles: list[str] = Field(default_factory=lambda: ["ROLE_USER"])
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 def _dump(model: BaseModel, *, exclude_unset: bool = False) -> dict:
