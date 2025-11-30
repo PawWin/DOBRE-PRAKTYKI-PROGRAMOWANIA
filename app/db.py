@@ -4,7 +4,8 @@ from typing import Callable, Iterable
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import Base, Link, Movie, Rating, Tag
+from app.models import Base, Link, Movie, Rating, Tag, User
+from app.security import format_roles, hash_password
 
 BASE_DIR = Path(__file__).resolve().parent
 # CSV files and SQLite file both live in app/database
@@ -98,9 +99,23 @@ def init_db() -> None:
                 "timestamp": _to_int(row["timestamp"]),
             },
         )
+        _ensure_admin_user(session)
 
 
 def serialize_model(instance: Base) -> dict:
     return {column.name: getattr(instance, column.name) for column in instance.__table__.columns}
+
+
+def _ensure_admin_user(session: Session) -> None:
+    if session.query(User).filter(User.username == "admin").first():
+        return
+    admin = User(
+        username="admin",
+        email="admin@example.com",
+        hashed_password=hash_password("admin"),
+        roles=format_roles(["ROLE_ADMIN", "ROLE_USER"]),
+    )
+    session.add(admin)
+    session.commit()
 
 
