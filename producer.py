@@ -1,58 +1,38 @@
 from __future__ import annotations
+
 import argparse
-from typing import List, Dict
+from typing import Dict, List
 
 from queue_utils import (
-    FileLock,
-    LOCK_FILE,
-    QUEUE_FILE,
+    QUEUE_DB,
     STATUS_DONE,
     STATUS_IN_PROGRESS,
     STATUS_PENDING,
-    ensure_queue_file,
-    read_jobs,
-    write_jobs,
+    create_jobs,
     utc_now,
 )
-
-
-def _build_job(
-    job_id: int, description: str, status: str = STATUS_PENDING
-) -> Dict[str, str | int]:
-    timestamp = utc_now()
-    return {
-        "id": job_id,
-        "status": status,
-        "created_at": timestamp,
-        "updated_at": timestamp,
-        "description": description,
-    }
 
 
 def enqueue_jobs(
     count: int, description_template: str | None, status: str
 ) -> List[int]:
-    ensure_queue_file()
-    with FileLock(LOCK_FILE):
-        jobs = read_jobs()
-        last_id = max((job["id"] for job in jobs), default=0)
-        created_ids = []
-        for offset in range(count):
-            job_id = last_id + offset + 1
-            desc = (
-                description_template.format(id=job_id)
-                if description_template
-                else f"Telephone conversation #{job_id}"
-            )
-            jobs.append(_build_job(job_id, desc, status=status))
-            created_ids.append(job_id)
-        write_jobs(jobs)
-    return created_ids
+    template = description_template or "Telephone conversation #{id}"
+
+    def build_row(job_id: int) -> Dict[str, str | int]:
+        timestamp = utc_now()
+        return {
+            "status": status,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+            "description": template.format(id=job_id),
+        }
+
+    return create_jobs(count, build_row)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Adds new jobs to the file-based queue."
+        description="Adds new jobs to the SQLite-backed queue."
     )
     parser.add_argument(
         "--count",
@@ -83,7 +63,7 @@ def main() -> None:
 
     created_ids = enqueue_jobs(args.count, args.description, args.status)
     print(
-        f"Created {len(created_ids)} job(s) in {QUEUE_FILE.name}: "
+        f"Created {len(created_ids)} job(s) in {QUEUE_DB.name}: "
         + ", ".join(str(job_id) for job_id in created_ids)
     )
 
