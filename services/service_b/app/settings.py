@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 import os
 
 
@@ -11,22 +10,23 @@ class Settings:
     rabbitmq_port: int
     rabbitmq_user: str
     rabbitmq_pass: str
-    rabbitmq_queue: str
-    storage_dir: Path
+    image_queue: str
+    result_queue: str
+    service_a_base_url: str
+    service_a_public_url: str
 
 
 def get_settings() -> Settings:
-    storage_root = os.getenv("STORAGE_DIR")
-    if storage_root:
-        storage_dir = Path(storage_root)
-    else:
-        storage_dir = Path(__file__).resolve().parent / "storage"
+    service_a_base_url = os.getenv("SERVICE_A_URL", "http://service-a:8000")
+    service_a_public_url = os.getenv("SERVICE_A_PUBLIC_URL", service_a_base_url)
 
     return Settings(
         rabbitmq_host=os.getenv("RABBITMQ_HOST", "localhost"),
         rabbitmq_port=int(os.getenv("RABBITMQ_PORT", "5672")),
         rabbitmq_user=os.getenv("RABBITMQ_USER", "guest"),
         rabbitmq_pass=os.getenv("RABBITMQ_PASS", "guest"),
-        rabbitmq_queue=os.getenv("RABBITMQ_QUEUE", "image_tasks"),
-        storage_dir=storage_dir,
+        image_queue=os.getenv("RABBITMQ_IMAGE_QUEUE", "image_tasks"),
+        result_queue=os.getenv("RABBITMQ_RESULT_QUEUE", "result_tasks"),
+        service_a_base_url=service_a_base_url,
+        service_a_public_url=service_a_public_url,
     )

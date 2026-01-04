@@ -1,0 +1,1 @@
+"""Service A application package."""

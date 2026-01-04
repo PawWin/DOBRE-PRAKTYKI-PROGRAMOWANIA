@@ -4,7 +4,7 @@ import json
 
 import pika
 
-from app.settings import get_settings
+from .settings import get_settings
 
 
 def connection_parameters() -> pika.ConnectionParameters:
@@ -19,15 +19,24 @@ def connection_parameters() -> pika.ConnectionParameters:
     )
 
 
-def publish_task(payload: dict) -> None:
-    settings = get_settings()
+def _publish(payload: dict, queue_name: str) -> None:
     connection = pika.BlockingConnection(connection_parameters())
     channel = connection.channel()
-    channel.queue_declare(queue=settings.rabbitmq_queue, durable=True)
+    channel.queue_declare(queue=queue_name, durable=True)
     channel.basic_publish(
         exchange="",
-        routing_key=settings.rabbitmq_queue,
+        routing_key=queue_name,
         body=json.dumps(payload).encode("utf-8"),
         properties=pika.BasicProperties(delivery_mode=2),
     )
     connection.close()
+
+
+def publish_image_task(payload: dict) -> None:
+    settings = get_settings()
+    _publish(payload, settings.image_queue)
+
+
+def publish_result_task(payload: dict) -> None:
+    settings = get_settings()
+    _publish(payload, settings.result_queue)

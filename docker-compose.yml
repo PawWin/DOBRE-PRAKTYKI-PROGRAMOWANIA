@@ -10,5 +10,61 @@ services:
       RABBITMQ_DEFAULT_PASS: guest
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+
+  service-a:
+    build:
+      context: ./services/service_a
+    ports:
+      - "8000:8000"
+    environment:
+      STORAGE_DIR: /data/results
+    volumes:
+      - service_a_results:/data/results
+    depends_on:
+      - rabbitmq
+
+  service-b-api:
+    build:
+      context: ./services/service_b
+    ports:
+      - "8001:8001"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_IMAGE_QUEUE: image_tasks
+      RABBITMQ_RESULT_QUEUE: result_tasks
+      SERVICE_A_URL: http://service-a:8000
+      SERVICE_A_PUBLIC_URL: http://localhost:8000
+    depends_on:
+      - rabbitmq
+      - service-a
+
+  service-b-worker:
+    build:
+      context: ./services/service_b
+    command: ["python", "-m", "app.workers.analyze_worker"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_IMAGE_QUEUE: image_tasks
+      RABBITMQ_RESULT_QUEUE: result_tasks
+      SERVICE_A_URL: http://service-a:8000
+    depends_on:
+      - rabbitmq
+    deploy:
+      replicas: 1
+
+  service-b-result-sender:
+    build:
+      context: ./services/service_b
+    command: ["python", "-m", "app.workers.result_sender"]
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_IMAGE_QUEUE: image_tasks
+      RABBITMQ_RESULT_QUEUE: result_tasks
+      SERVICE_A_URL: http://service-a:8000
+    depends_on:
+      - rabbitmq
+      - service-a
+
 volumes:
   rabbitmq_data:
+  service_a_results:

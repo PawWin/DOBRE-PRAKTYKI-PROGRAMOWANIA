@@ -4,4 +4,3 @@ pika
 requests
 numpy
 opencv-python-headless
-pytest

@@ -1,0 +1,1 @@
+"""Service A endpoints package."""
