@@ -5,6 +5,7 @@ import time
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import numpy as np
@@ -221,6 +222,7 @@ class Evaluator:
         save_detections: bool = False,
         save_det_limit: int = 10,
         save_det_dir: Path | None = None,
+        correct_polish: bool = False,
     ):
         """
         Initialize evaluator.
@@ -245,6 +247,7 @@ class Evaluator:
             save_detections: Save YOLO annotated outputs for a subset
             save_det_limit: Max number of images to save
             save_det_dir: Directory for saved detections
+            correct_polish: Apply Polish plate correction heuristics
         """
         self.loader = CVATDatasetLoader(dataset_path)
         self.pipeline_gt = AnnotationBasedPipeline(
@@ -257,6 +260,7 @@ class Evaluator:
             min_score=min_score,
             top_k=top_k,
             ocr_version=ocr_version,
+            correct_polish=correct_polish,
         )
         self.pipeline_yolo = PlateRecognitionPipeline(
             use_gpu=use_gpu,
@@ -271,6 +275,7 @@ class Evaluator:
             min_score=min_score,
             top_k=top_k,
             ocr_version=ocr_version,
+            correct_polish=correct_polish,
         )
         self.use_yolo = use_yolo
         self.save_detections = save_detections
@@ -326,16 +331,14 @@ class Evaluator:
         
         # Process each sample
         saved_count = 0
+        preloaded = self._preload_samples(samples)
 
         if effective_use_yolo and self.batch_size > 1:
             # Batch mode for YOLO
             chunk = []
             chunk_samples = []
-            iterator = tqdm(samples, desc="Processing (batch)") if verbose else samples
-            for sample in iterator:
-                image = cv2.imread(str(sample["image_path"]))
-                if image is None:
-                    continue
+            iterator = tqdm(preloaded, desc="Processing (batch)") if verbose else preloaded
+            for sample, image in iterator:
                 img_resized, sx, sy = resize_keep_aspect(image, self.pipeline_yolo.target_width)
                 chunk.append((img_resized, sx, sy))
                 chunk_samples.append(sample)
@@ -345,11 +348,8 @@ class Evaluator:
             if chunk:
                 self._process_yolo_chunk(chunk, chunk_samples, predictions, ground_truths, predictions_list, iou_values)
         else:
-            iterator = tqdm(samples, desc="Processing") if verbose else samples
-            for sample in iterator:
-                image = cv2.imread(str(sample["image_path"]))
-                if image is None:
-                    continue
+            iterator = tqdm(preloaded, desc="Processing") if verbose else preloaded
+            for sample, image in iterator:
                 if effective_use_yolo:
                     # YOLO detection + OCR (single)
                     save_flag = False
@@ -418,6 +418,17 @@ class Evaluator:
             predictions=predictions_list,
             mean_iou=mean_iou,
         )
+
+    def _preload_samples(self, samples: list[dict]) -> list[tuple[dict, np.ndarray]]:
+        """Load images in parallel to overlap I/O with compute."""
+        loaded: list[tuple[dict, np.ndarray]] = []
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [executor.submit(cv2.imread, str(sample["image_path"])) for sample in samples]
+            for sample, future in zip(samples, futures):
+                image = future.result()
+                if image is not None:
+                    loaded.append((sample, image))
+        return loaded
 
     def _process_yolo_chunk(
         self,

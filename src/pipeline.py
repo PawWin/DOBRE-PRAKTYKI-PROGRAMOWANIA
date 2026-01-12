@@ -44,6 +44,7 @@ class PlateRecognitionPipeline:
         padding: float = 0.20,
         imgsz: int | None = None,
         ocr_version: str = "PP-OCRv4",
+        correct_polish: bool = False,
     ):
         """
         Initialize the pipeline.
@@ -61,6 +62,7 @@ class PlateRecognitionPipeline:
             padding: Padding (fraction) around detected box before OCR
             imgsz: Optional YOLO inference size
             ocr_version: PaddleOCR version to use
+            correct_polish: Apply Polish plate correction heuristics
         """
         self.detector = PlateDetector(
             model_path=detector_model,
@@ -75,6 +77,7 @@ class PlateRecognitionPipeline:
             text_rec_score_thresh=rec_score,
             min_score=min_score,
             top_k=top_k,
+            correct_polish=correct_polish,
         )
         self.target_width = target_width
         self.padding = padding
@@ -165,6 +168,7 @@ class AnnotationBasedPipeline:
         min_score: float = 0.10,
         top_k: int = 4,
         ocr_version: str = "PP-OCRv4",
+        correct_polish: bool = False,
     ):
         """
         Initialize the pipeline.
@@ -179,6 +183,7 @@ class AnnotationBasedPipeline:
             min_score: Minimum score for candidate filtering
             top_k: Number of top text candidates to consider
             ocr_version: PaddleOCR version to use
+            correct_polish: Apply Polish plate correction heuristics
         """
         self.detector = SimplePlateDetector()
         self.ocr = PlateOCR(
@@ -189,6 +194,7 @@ class AnnotationBasedPipeline:
             text_rec_score_thresh=rec_score,
             min_score=min_score,
             top_k=top_k,
+            correct_polish=correct_polish,
         )
         self.crop_padding = crop_padding
         self.target_width = target_width

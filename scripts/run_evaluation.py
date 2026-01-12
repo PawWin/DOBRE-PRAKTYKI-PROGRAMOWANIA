@@ -111,6 +111,7 @@ def main():
     parser.add_argument("--save-detections", action="store_true", help="Save YOLO detection previews (up to limit)")
     parser.add_argument("--save-det-limit", type=int, default=10, help="How many images to save (default 10)")
     parser.add_argument("--save-det-dir", type=Path, default=Path("runs/detections"), help="Directory for saved detections")
+    parser.add_argument("--polish-fix", action="store_true", help="Apply heuristic corrections for Polish plates")
     
     args = parser.parse_args()
     
@@ -156,6 +157,7 @@ def main():
         save_detections=args.save_detections,
         save_det_limit=args.save_det_limit,
         save_det_dir=args.save_det_dir,
+        correct_polish=args.polish_fix,
     )
     
     # Run evaluation

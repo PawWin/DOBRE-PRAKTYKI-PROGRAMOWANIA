@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import paddle
 from paddleocr import PaddleOCR
-import torch 
 
 
 class PlateOCR:
@@ -20,6 +19,7 @@ class PlateOCR:
         text_rec_score_thresh: float = 0.0,
         min_score: float = 0.10,
         top_k: int = 4,
+        correct_polish: bool = False,
     ):
         """
         Initialize PaddleOCR.
@@ -51,6 +51,7 @@ class PlateOCR:
         
         self.min_score = min_score  # Minimum score for text
         self.top_k = top_k
+        self.correct_polish = correct_polish
     
     def recognize(self, image: np.ndarray, preprocess: bool = False) -> str:
         """
@@ -191,6 +192,8 @@ class PlateOCR:
                 if not best_text and top_k:
                     best_text = top_k[0][0]
                 
+                if self.correct_polish:
+                    best_text = self._correct_polish_plate(best_text)
                 return best_text
             
             # Old format fallback
@@ -204,9 +207,38 @@ class PlateOCR:
                             texts.append(text)
                         elif isinstance(text_data, str):
                             texts.append(text_data)
-                return "".join(texts)
+                merged = "".join(texts)
+                return self._correct_polish_plate(merged) if self.correct_polish else merged
         
         return ""
+
+    def _correct_polish_plate(self, text: str) -> str:
+        """Heuristically correct common OCR mistakes for Polish plates."""
+        if not text:
+            return text
+        fixed = []
+        upper = text.upper()
+        for idx, ch in enumerate(upper):
+            if idx < 3:  # region code is letters
+                if ch == "0":
+                    ch = "O"
+                elif ch == "1":
+                    ch = "I"
+                elif ch == "5":
+                    ch = "S"
+                elif ch == "8":
+                    ch = "B"
+            else:  # numeric part
+                if ch == "O":
+                    ch = "0"
+                elif ch == "I":
+                    ch = "1"
+                elif ch == "S":
+                    ch = "5"
+                elif ch == "B":
+                    ch = "8"
+            fixed.append(ch)
+        return "".join(fixed)
 
 class DirectOCR:
     """
