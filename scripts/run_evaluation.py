@@ -87,6 +87,30 @@ def main():
         default=0.25,
         help="YOLO confidence threshold (default 0.25)"
     )
+    parser.add_argument(
+        "--yolo-model",
+        type=Path,
+        default=None,
+        help="Path to YOLO plate detector model (.pt)"
+    )
+    parser.add_argument(
+        "--yolo-imgsz",
+        type=int,
+        default=None,
+        help="Optional YOLO inference size (imgsz)"
+    )
+    parser.add_argument("--padding", type=float, default=0.20, help="Padding fraction around bbox for OCR (default 0.20)")
+    parser.add_argument("--det-thresh", type=float, default=0.05, help="OCR det threshold")
+    parser.add_argument("--box-thresh", type=float, default=0.05, help="OCR box threshold")
+    parser.add_argument("--rec-score", type=float, default=0.10, help="OCR recognition score threshold")
+    parser.add_argument("--min-score", type=float, default=0.10, help="OCR min score filter")
+    parser.add_argument("--top-k", type=int, default=4, help="OCR top-K candidates")
+    parser.add_argument("--ocr-version", type=str, default="PP-OCRv4", help="PaddleOCR version (default PP-OCRv4)")
+    parser.add_argument("--batch-size", type=int, default=1, help="Batch size for YOLO inference (default 1)")
+    parser.add_argument("--ocr-batch-size", type=int, default=1, help="Batch size for OCR (default 1 - per crop)")
+    parser.add_argument("--save-detections", action="store_true", help="Save YOLO detection previews (up to limit)")
+    parser.add_argument("--save-det-limit", type=int, default=10, help="How many images to save (default 10)")
+    parser.add_argument("--save-det-dir", type=Path, default=Path("runs/detections"), help="Directory for saved detections")
     
     args = parser.parse_args()
     
@@ -118,6 +142,20 @@ def main():
         target_width=args.target_width,
         use_yolo=args.use_yolo,
         yolo_conf=args.yolo_conf,
+        yolo_model=args.yolo_model,
+        yolo_imgsz=args.yolo_imgsz,
+        padding=args.padding,
+        det_thresh=args.det_thresh,
+        box_thresh=args.box_thresh,
+        rec_score=args.rec_score,
+        min_score=args.min_score,
+        top_k=args.top_k,
+        ocr_version=args.ocr_version,
+        batch_size=args.batch_size,
+        ocr_batch_size=args.ocr_batch_size,
+        save_detections=args.save_detections,
+        save_det_limit=args.save_det_limit,
+        save_det_dir=args.save_det_dir,
     )
     
     # Run evaluation

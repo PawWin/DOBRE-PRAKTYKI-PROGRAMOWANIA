@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import paddle
 from paddleocr import PaddleOCR
+import torch 
 
 
 class PlateOCR:
@@ -68,7 +69,6 @@ class PlateOCR:
         # Optionally preprocess
         if preprocess:
             image = self._preprocess(image)
-        
         # Run OCR using predict (new API)
         result = self.ocr.predict(image)
         
@@ -92,6 +92,23 @@ class PlateOCR:
             text = self.recognize(image)
             results.append(text)
         return results
+
+    def recognize_list(self, images: list[np.ndarray]) -> list[str]:
+        """
+        Recognize text for a list of images using PaddleOCR batch predict.
+        """
+        if not images:
+            return []
+        result = self.ocr.predict(images)
+        if not result:
+            return ["" for _ in images]
+        texts = []
+        for item in result:
+            texts.append(self._extract_text([item]))
+        # Ensure same length
+        while len(texts) < len(images):
+            texts.append("")
+        return texts
     
     def _preprocess(self, image: np.ndarray) -> np.ndarray:
         """
@@ -109,20 +126,8 @@ class PlateOCR:
             scale = max(50 / h, 100 / w)
             image = cv2.resize(image, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         
-        # Convert to grayscale
-        if len(image.shape) == 3:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = image
-        
-        # Apply CLAHE for better contrast
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        enhanced = clahe.apply(gray)
-        
-        # Convert back to BGR for PaddleOCR
-        result = cv2.cvtColor(enhanced, cv2.COLOR_GRAY2BGR)
-        
-        return result
+        # Return without grayscale conversion
+        return image
     
     def _extract_text(self, result: list) -> str:
         """
@@ -202,7 +207,6 @@ class PlateOCR:
                 return "".join(texts)
         
         return ""
-
 
 class DirectOCR:
     """

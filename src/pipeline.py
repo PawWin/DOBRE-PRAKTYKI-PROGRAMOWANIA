@@ -43,6 +43,7 @@ class PlateRecognitionPipeline:
         top_k: int = 4,
         padding: float = 0.20,
         imgsz: int | None = None,
+        ocr_version: str = "PP-OCRv4",
     ):
         """
         Initialize the pipeline.
@@ -59,6 +60,7 @@ class PlateRecognitionPipeline:
             top_k: Number of top text candidates to consider
             padding: Padding (fraction) around detected box before OCR
             imgsz: Optional YOLO inference size
+            ocr_version: PaddleOCR version to use
         """
         self.detector = PlateDetector(
             model_path=detector_model,
@@ -67,6 +69,7 @@ class PlateRecognitionPipeline:
         )
         self.ocr = PlateOCR(
             use_gpu=use_gpu,
+            ocr_version=ocr_version,
             text_det_thresh=det_thresh,
             text_det_box_thresh=box_thresh,
             text_rec_score_thresh=rec_score,
@@ -76,7 +79,13 @@ class PlateRecognitionPipeline:
         self.target_width = target_width
         self.padding = padding
     
-    def process_image(self, image: np.ndarray) -> list[dict]:
+    def process_image(
+        self,
+        image: np.ndarray,
+        return_scale: bool = False,
+        save: bool = False,
+        save_dir: str | None = None,
+    ) -> list[dict] | tuple[list[dict], float, float]:
         """
         Process a single image to detect and recognize license plates.
         
@@ -87,10 +96,10 @@ class PlateRecognitionPipeline:
             List of results with keys: 'bbox', 'text', 'confidence'
         """
         # Optional resize for faster/cleaner detection
-        image_resized, _, _ = resize_keep_aspect(image, self.target_width)
+        image_resized, sx, sy = resize_keep_aspect(image, self.target_width)
 
         # Detect plates
-        detections = self.detector.detect(image_resized)
+        detections = self.detector.detect(image_resized, save_dir=save_dir, save=save)
         
         results = []
         for det in detections:
@@ -105,7 +114,7 @@ class PlateRecognitionPipeline:
             y1_p = max(0, y1 - pad_y)
             x2_p = min(w, x2 + pad_x)
             y2_p = min(h, y2 + pad_y)
-            crop = image_resized[y1_p:y2_p, x1_p:x2_p].copy()
+            crop = image_resized[y1_p:y2_p, x1_p:x2_p]
 
             # Run OCR on each detected plate
             text = self.ocr.recognize(crop)
@@ -115,9 +124,11 @@ class PlateRecognitionPipeline:
                 "confidence": det["confidence"]
             })
         
+        if return_scale:
+            return results, sx, sy
         return results
     
-    def process_file(self, image_path: str | Path) -> list[dict]:
+    def process_file(self, image_path: str | Path, return_scale: bool = False) -> list[dict] | tuple[list[dict], float, float]:
         """
         Process an image file.
         
@@ -131,7 +142,7 @@ class PlateRecognitionPipeline:
         if image is None:
             raise ValueError(f"Could not read image: {image_path}")
         
-        return self.process_image(image)
+        return self.process_image(image, return_scale=return_scale)
 
 
 class AnnotationBasedPipeline:
@@ -153,6 +164,7 @@ class AnnotationBasedPipeline:
         rec_score: float = 0.10,
         min_score: float = 0.10,
         top_k: int = 4,
+        ocr_version: str = "PP-OCRv4",
     ):
         """
         Initialize the pipeline.
@@ -166,10 +178,12 @@ class AnnotationBasedPipeline:
             rec_score: OCR recognition score threshold
             min_score: Minimum score for candidate filtering
             top_k: Number of top text candidates to consider
+            ocr_version: PaddleOCR version to use
         """
         self.detector = SimplePlateDetector()
         self.ocr = PlateOCR(
             use_gpu=use_gpu,
+            ocr_version=ocr_version,
             text_det_thresh=det_thresh,
             text_det_box_thresh=box_thresh,
             text_rec_score_thresh=rec_score,
@@ -250,7 +264,7 @@ class AnnotationBasedPipeline:
         x2_padded = min(w, x2 + pad_x)
         y2_padded = min(h, y2 + pad_y)
         
-        crop = image_resized[y1_padded:y2_padded, x1_padded:x2_padded].copy()
+        crop = image_resized[y1_padded:y2_padded, x1_padded:x2_padded]
         
         text = self.ocr.recognize(crop)
         return text

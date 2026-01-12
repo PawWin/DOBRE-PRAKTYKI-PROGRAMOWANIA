@@ -108,3 +108,11 @@ Ocena końcowa wyliczana jest według wzoru:
 - **YOLOv8** - detekcja tablic rejestracyjnych
 - **PaddleOCR** - rozpoznawanie tekstu
 - **UV** - zarządzanie środowiskiem Python
+
+󰣇 ~/school/DOBRE-PRAKTYKI-PROGRAMOWANIA   automatic_plate_number_recognition  !? ❯ source .venv/bin/activate
+python scripts/run_evaluation.py \
+  --num-samples 100 \
+  --use-yolo \
+  --yolo-model /home/wajcha/school/DOBRE-PRAKTYKI-PROGRAMOWANIA/LP-detection.pt \
+  --yolo-conf 0.25 \
+  --yolo-imgsz 1056

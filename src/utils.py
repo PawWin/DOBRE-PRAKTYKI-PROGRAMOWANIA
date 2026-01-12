@@ -82,4 +82,28 @@ def get_image_files(directory: Path, extensions: tuple = (".jpg", ".jpeg", ".png
         image_files.extend(directory.glob(f"*{ext.upper()}"))
     return sorted(image_files)
 
-#print(calculate_final_grade(93, 4.2))
+
+def iou(box1: tuple[float, float, float, float], box2: tuple[float, float, float, float]) -> float:
+    """
+    Compute Intersection over Union for two boxes in (x1, y1, x2, y2) format.
+    """
+    x1 = max(box1[0], box2[0])
+    y1 = max(box1[1], box2[1])
+    x2 = min(box1[2], box2[2])
+    y2 = min(box1[3], box2[3])
+
+    inter_w = max(0.0, x2 - x1)
+    inter_h = max(0.0, y2 - y1)
+    inter = inter_w * inter_h
+
+    area1 = max(0.0, box1[2] - box1[0]) * max(0.0, box1[3] - box1[1])
+    area2 = max(0.0, box2[2] - box2[0]) * max(0.0, box2[3] - box2[1])
+
+    union = area1 + area2 - inter
+    if union <= 0:
+        return 0.0
+    return inter / union
+
+#print(calculate_final_grade(94, 6))
+import torch
+print(torch.cuda.is_available())

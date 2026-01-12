@@ -43,22 +43,34 @@ class PlateDetector:
         except ImportError:
             return False
     
-    def detect(self, image: np.ndarray) -> list[dict]:
+    def detect(self, image: np.ndarray, save_dir: str | None = None, save: bool = False) -> list[dict]:
         """
         Detect license plates in an image.
         
         Args:
             image: BGR image as numpy array
+            save_dir: Optional directory to save annotated detections
+            save: Whether to save annotated image
             
         Returns:
             List of detections with keys: 'bbox', 'confidence', 'crop'
         """
+        project = None
+        name = None
+        if save and save_dir:
+            # Ultralytics expects project/name; we use project=save_dir, name="eval"
+            project = Path(save_dir).resolve()
+            name = "eval"
         results = self.model(
             image,
             device=self.device,
             verbose=False,
             conf=self.conf_threshold,
             imgsz=self.imgsz,
+            save=save,
+            project=project if save else None,
+            name=name if save else None,
+            exist_ok=True,
         )
         
         detections = []
@@ -71,28 +83,42 @@ class PlateDetector:
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 conf = float(box.conf[0])
                 
-                # Crop the detected region
-                crop = image[y1:y2, x1:x2].copy()
-                
                 detections.append({
                     "bbox": (x1, y1, x2, y2),
                     "confidence": conf,
-                    "crop": crop
+                    "crop": image[y1:y2, x1:x2],
                 })
         
         return detections
     
-    def detect_batch(self, images: list[np.ndarray]) -> list[list[dict]]:
+    def detect_batch(self, images: list[np.ndarray], save_dir: str | None = None, save: bool = False) -> list[list[dict]]:
         """
         Detect license plates in a batch of images.
         
         Args:
             images: List of BGR images as numpy arrays
+            save_dir: Optional directory to save annotated detections
+            save: Whether to save annotated images
             
         Returns:
             List of detection lists (one per image)
         """
-        results = self.model(images, device=self.device, verbose=False, conf=self.conf_threshold)
+        project = None
+        name = None
+        if save and save_dir:
+            project = Path(save_dir).resolve()
+            name = "eval"
+        results = self.model(
+            images,
+            device=self.device,
+            verbose=False,
+            conf=self.conf_threshold,
+            imgsz=self.imgsz,
+            save=save,
+            project=project if save else None,
+            name=name if save else None,
+            exist_ok=True,
+        )
         
         all_detections = []
         for result, image in zip(results, images):
@@ -102,12 +128,10 @@ class PlateDetector:
                 for box in boxes:
                     x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                     conf = float(box.conf[0])
-                    crop = image[y1:y2, x1:x2].copy()
-                    
                     detections.append({
                         "bbox": (x1, y1, x2, y2),
                         "confidence": conf,
-                        "crop": crop
+                        "crop": image[y1:y2, x1:x2],
                     })
             all_detections.append(detections)
         
