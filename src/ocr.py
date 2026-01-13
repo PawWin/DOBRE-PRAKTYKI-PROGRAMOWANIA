@@ -17,9 +17,7 @@ class PlateOCR:
         text_det_thresh: float = 0.05,
         text_det_box_thresh: float = 0.05,
         text_rec_score_thresh: float = 0.0,
-        min_score: float = 0.10,
         top_k: int = 4,
-        correct_polish: bool = False,
     ):
         """
         Initialize PaddleOCR.
@@ -49,9 +47,7 @@ class PlateOCR:
             text_rec_score_thresh=text_rec_score_thresh,
         )
         
-        self.min_score = min_score  # Minimum score for text
         self.top_k = top_k
-        self.correct_polish = correct_polish
     
     def recognize(self, image: np.ndarray, preprocess: bool = False) -> str:
         """
@@ -70,13 +66,8 @@ class PlateOCR:
         # Optionally preprocess
         if preprocess:
             image = self._preprocess(image)
-        # Run OCR using predict (new API)
         result = self.ocr.predict(image)
-        
-        # Extract text from results
-        text = self._extract_text(result)
-        
-        return text
+        return self._first_text(result)
     
     def recognize_batch(self, images: list[np.ndarray]) -> list[str]:
         """
@@ -105,8 +96,7 @@ class PlateOCR:
             return ["" for _ in images]
         texts = []
         for item in result:
-            texts.append(self._extract_text([item]))
-        # Ensure same length
+            texts.append(self._first_text([item]))
         while len(texts) < len(images):
             texts.append("")
         return texts
@@ -130,148 +120,25 @@ class PlateOCR:
         # Return without grayscale conversion
         return image
     
-    def _extract_text(self, result: list) -> str:
-        """
-        Extract text from PaddleOCR 3.x result.
-        
-        Args:
-            result: PaddleOCR output
-            
-        Returns:
-            Best recognized text string (highest scoring or longest)
-        """
+    def _first_text(self, result: list) -> str:
+        """Return first non-empty recognized text from PaddleOCR output."""
         if not result:
             return ""
-        
-        # PaddleOCR 3.x returns list of dicts
-        if isinstance(result, list) and len(result) > 0:
-            item = result[0]
-            
-            # New format: dict with rec_texts and rec_scores
-            if isinstance(item, dict):
-                texts = item.get("rec_texts", [])
-                scores = item.get("rec_scores", [])
-                
-                if not texts:
-                    return ""
-                
-                # Collect all texts with scores
-                text_scores = []
-                for text, score in zip(texts, scores):
-                    text = text.strip()
-                    if text and score >= self.min_score:
-                        text_scores.append((text, score))
-                
-                if not text_scores:
-                    # Fallback: get any non-empty text
-                    text_scores = [(t.strip(), 0) for t in texts if t.strip()]
-                
-                if not text_scores:
-                    return ""
-                
-                # Sort by score descending, then by length descending
-                text_scores.sort(key=lambda x: (x[1], len(x[0])), reverse=True)
-                
-                # Get top-k texts and pick the best one (longest plate-like)
-                top_k = text_scores[: self.top_k]
-                
-                # Find the best plate-like text (alphanumeric, reasonable length)
-                best_text = ""
-                best_score = -1
-                
-                for text, score in top_k:
-                    # License plates are typically 5-8 characters
-                    # Prefer texts that look like plates
-                    clean = ''.join(c for c in text if c.isalnum())
-                    if len(clean) >= 5 and len(clean) <= 10:
-                        if score > best_score or (score == best_score and len(clean) > len(best_text)):
-                            best_text = text
-                            best_score = score
-                
-                # If no plate-like text found, return the highest scoring one
-                if not best_text and top_k:
-                    best_text = top_k[0][0]
-                
-                if self.correct_polish:
-                    best_text = self._correct_polish_plate(best_text)
-                return best_text
-            
-            # Old format fallback
-            elif isinstance(item, (list, tuple)):
-                texts = []
-                for line in result[0]:
-                    if line and len(line) >= 2:
-                        text_data = line[1]
-                        if isinstance(text_data, tuple) and len(text_data) >= 2:
-                            text, confidence = text_data
-                            texts.append(text)
-                        elif isinstance(text_data, str):
-                            texts.append(text_data)
-                merged = "".join(texts)
-                return self._correct_polish_plate(merged) if self.correct_polish else merged
-        
-        return ""
-
-    def _correct_polish_plate(self, text: str) -> str:
-        """Heuristically correct common OCR mistakes for Polish plates."""
-        if not text:
-            return text
-        fixed = []
-        upper = text.upper()
-        for idx, ch in enumerate(upper):
-            if idx < 3:  # region code is letters
-                if ch == "0":
-                    ch = "O"
-                elif ch == "1":
-                    ch = "I"
-                elif ch == "5":
-                    ch = "S"
-                elif ch == "8":
-                    ch = "B"
-            else:  # numeric part
-                if ch == "O":
-                    ch = "0"
-                elif ch == "I":
-                    ch = "1"
-                elif ch == "S":
-                    ch = "5"
-                elif ch == "B":
-                    ch = "8"
-            fixed.append(ch)
-        return "".join(fixed)
-
-class DirectOCR:
-    """
-    Direct OCR without preprocessing - for comparison.
-    """
-    
-    def __init__(self, use_gpu: bool = True):
-        """Initialize direct OCR."""
-        if use_gpu and paddle.device.is_compiled_with_cuda():
-            paddle.device.set_device("gpu")
-        else:
-            paddle.device.set_device("cpu")
-            
-        self.ocr = PaddleOCR(
-            lang="en",
-            use_doc_orientation_classify=False,
-            use_doc_unwarping=False,
-            use_textline_orientation=False,
-        )
-    
-    def recognize(self, image: np.ndarray) -> str:
-        """Recognize text directly without preprocessing."""
-        if image is None or image.size == 0:
-            return ""
-        
-        result = self.ocr.predict(image)
-        
-        if not result:
-            return ""
-        
         item = result[0]
         if isinstance(item, dict):
-            texts = item.get("rec_texts", [])
-            return "".join(t for t in texts if t.strip())
-        
+            for text in item.get("rec_texts", []):
+                cleaned = text.strip()
+                if cleaned:
+                    return cleaned
+            return ""
+        if isinstance(item, (list, tuple)):
+            texts = []
+            for line in result[0]:
+                if line and len(line) >= 2:
+                    text_data = line[1]
+                    if isinstance(text_data, tuple) and len(text_data) >= 2:
+                        texts.append(text_data[0])
+                    elif isinstance(text_data, str):
+                        texts.append(text_data)
+            return "".join(texts)
         return ""

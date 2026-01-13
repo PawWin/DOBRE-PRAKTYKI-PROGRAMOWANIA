@@ -39,12 +39,10 @@ class PlateRecognitionPipeline:
         det_thresh: float = 0.05,
         box_thresh: float = 0.05,
         rec_score: float = 0.10,
-        min_score: float = 0.10,
         top_k: int = 4,
         padding: float = 0.20,
         imgsz: int | None = None,
         ocr_version: str = "PP-OCRv4",
-        correct_polish: bool = False,
     ):
         """
         Initialize the pipeline.
@@ -57,12 +55,10 @@ class PlateRecognitionPipeline:
             det_thresh: OCR detection threshold
             box_thresh: OCR box threshold
             rec_score: OCR recognition score threshold
-            min_score: Minimum score for candidate filtering
             top_k: Number of top text candidates to consider
             padding: Padding (fraction) around detected box before OCR
             imgsz: Optional YOLO inference size
             ocr_version: PaddleOCR version to use
-            correct_polish: Apply Polish plate correction heuristics
         """
         self.detector = PlateDetector(
             model_path=detector_model,
@@ -75,9 +71,7 @@ class PlateRecognitionPipeline:
             text_det_thresh=det_thresh,
             text_det_box_thresh=box_thresh,
             text_rec_score_thresh=rec_score,
-            min_score=min_score,
             top_k=top_k,
-            correct_polish=correct_polish,
         )
         self.target_width = target_width
         self.padding = padding
@@ -162,10 +156,8 @@ class AnnotationBasedPipeline:
         det_thresh: float = 0.05,
         box_thresh: float = 0.05,
         rec_score: float = 0.10,
-        min_score: float = 0.10,
         top_k: int = 4,
         ocr_version: str = "PP-OCRv4",
-        correct_polish: bool = False,
     ):
         """
         Initialize the pipeline.
@@ -177,10 +169,8 @@ class AnnotationBasedPipeline:
             det_thresh: OCR detection threshold
             box_thresh: OCR box threshold
             rec_score: OCR recognition score threshold
-            min_score: Minimum score for candidate filtering
             top_k: Number of top text candidates to consider
             ocr_version: PaddleOCR version to use
-            correct_polish: Apply Polish plate correction heuristics
         """
         self.detector = SimplePlateDetector()
         self.ocr = PlateOCR(
@@ -189,9 +179,7 @@ class AnnotationBasedPipeline:
             text_det_thresh=det_thresh,
             text_det_box_thresh=box_thresh,
             text_rec_score_thresh=rec_score,
-            min_score=min_score,
             top_k=top_k,
-            correct_polish=correct_polish,
         )
         self.crop_padding = crop_padding
         self.target_width = target_width

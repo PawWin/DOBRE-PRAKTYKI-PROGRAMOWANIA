@@ -214,12 +214,10 @@ class Evaluator:
         det_thresh: float = 0.05,
         box_thresh: float = 0.05,
         rec_score: float = 0.10,
-        min_score: float = 0.10,
         top_k: int = 4,
         ocr_version: str = "PP-OCRv4",
         batch_size: int = 1,
         ocr_batch_size: int = 1,
-        correct_polish: bool = False,
     ):
         """
         Initialize evaluator.
@@ -236,12 +234,10 @@ class Evaluator:
             det_thresh: OCR detection threshold
             box_thresh: OCR box threshold
             rec_score: OCR recognition score threshold
-            min_score: Minimum score for candidate filtering
             top_k: Number of top text candidates to consider
             ocr_version: PaddleOCR version to use
             batch_size: Batch size for YOLO inference (use_yolo mode)
             ocr_batch_size: Batch size for OCR (use_yolo mode)
-            correct_polish: Apply Polish plate correction heuristics
         """
         self.loader = CVATDatasetLoader(dataset_path)
         self.pipeline_gt = AnnotationBasedPipeline(
@@ -251,10 +247,8 @@ class Evaluator:
             det_thresh=det_thresh,
             box_thresh=box_thresh,
             rec_score=rec_score,
-            min_score=min_score,
             top_k=top_k,
             ocr_version=ocr_version,
-            correct_polish=correct_polish,
         )
         self.pipeline_yolo = PlateRecognitionPipeline(
             use_gpu=use_gpu,
@@ -266,10 +260,8 @@ class Evaluator:
             det_thresh=det_thresh,
             box_thresh=box_thresh,
             rec_score=rec_score,
-            min_score=min_score,
             top_k=top_k,
             ocr_version=ocr_version,
-            correct_polish=correct_polish,
         )
         self.use_yolo = use_yolo
         self.batch_size = max(1, batch_size)
@@ -337,9 +329,9 @@ class Evaluator:
             for sample, image in iterator:
                 if effective_use_yolo:
                     # YOLO detection + OCR (single)
-                    detections, sx, sy = self.pipeline_yolo.process_image(image, return_scale=True)
-                    if detections:
-                        best = detections[0]
+                    detection, sx, sy = self.pipeline_yolo.process_image(image, return_scale=True)
+                    if detection:
+                        best = detection[0]
                         predicted_text = best.get("text", "")
                         pred_bbox = best.get("bbox")
                         if pred_bbox:
