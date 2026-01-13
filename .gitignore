@@ -60,3 +60,4 @@ results/
 Thumbs.db
 
 runs/
+.env

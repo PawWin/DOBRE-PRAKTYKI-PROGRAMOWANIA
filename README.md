@@ -109,6 +109,56 @@ Ocena końcowa wyliczana jest według wzoru:
 - **PaddleOCR** - rozpoznawanie tekstu
 - **UV** - zarządzanie środowiskiem Python
 
+## API + kolejka (FastAPI, RabbitMQ, SQLite)
+
+W repo są gotowe obrazy dockerowe dla API oraz workera obsługującego kolejkę.
+
+- Upewnij się, że model `LP-detection.pt` leży w katalogu głównym repo (jest kopiowany do obrazów).
+- Dashboard RabbitMQ jest dostępny na porcie `15672` (login `guest` / `guest`).
+
+### Uruchomienie (docker-compose)
+
+```bash
+docker compose up --build
+```
+
+Serwisy:
+- `api` (FastAPI) na porcie `8000`
+- `worker` (konsument kolejki)
+- `rabbitmq` (kolejka + panel `http://localhost:15672`)
+
+SQLite jest zapisywany w volume `./data/app.db`.
+
+### Endpointy
+
+- `POST /analyze` – synchroniczna analiza obrazu podanego jako URL:
+  ```json
+  { "image_url": "https://example.com/plate.jpg" }
+  ```
+- `POST /enqueue` – dodaje zadanie do kolejki, zwraca `job_id`:
+  ```json
+  { "image_url": "https://example.com/plate.jpg" }
+  ```
+- `GET /job/{job_id}` – status wyniku (`queued/running/done/error`) oraz rezultat (tekst tablicy, bbox, czasy).
+- `GET /health` – prosty healthcheck.
+
+### Ręczne testy (przykład)
+
+```bash
+# synchroniczna analiza
+curl -X POST http://localhost:8000/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"image_url":"https://example.com/plate.jpg"}'
+
+# dodanie do kolejki
+JOB_ID=$(curl -s -X POST http://localhost:8000/enqueue \
+  -H "Content-Type: application/json" \
+  -d '{"image_url":"https://example.com/plate.jpg"}' | jq -r .job_id)
+
+# sprawdzenie statusu
+curl http://localhost:8000/job/$JOB_ID
+```
+
 󰣇 ~/school/DOBRE-PRAKTYKI-PROGRAMOWANIA   automatic_plate_number_recognition  !? ❯ source .venv/bin/activate
 python scripts/run_evaluation.py \
   --num-samples 100 \
@@ -116,3 +166,8 @@ python scripts/run_evaluation.py \
   --yolo-model /home/wajcha/school/DOBRE-PRAKTYKI-PROGRAMOWANIA/LP-detection.pt \
   --yolo-conf 0.25 \
   --yolo-imgsz 1056
+
+https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fc8.alamy.com%2Fcomp%2F2R6F5T0%2Fwarsaw-poland-4-june-2023-polish-police-car-on-the-street-view-of-a-police-car-with-the-lettering-policja-police-patrol-car-parked-on-the-stree-2R6F5T0.jpg&f=1&nofb=1&ipt=d70b5d2eca44399dde30ec9fb038eb020d750daf95f08eafef2e0496b85b111b
+
+uv run python -m api.worker 
+uv run uvicorn api.main:app --host 0.0.0.0 --port 8000
