@@ -230,7 +230,6 @@ class Evaluator:
             yolo_conf: Confidence threshold for YOLO detection
             yolo_model: Path to YOLO model (.pt)
             yolo_imgsz: Optional YOLO inference size
-            padding: OCR crop padding for YOLO detections
             det_thresh: OCR detection threshold
             box_thresh: OCR box threshold
             rec_score: OCR recognition score threshold
@@ -329,16 +328,13 @@ class Evaluator:
             for sample, image in iterator:
                 if effective_use_yolo:
                     # YOLO detection + OCR (single)
-                    detection, sx, sy = self.pipeline_yolo.process_image(image, return_scale=True)
+                    detection = self.pipeline_yolo.process_image(image)
                     if detection:
-                        best = detection[0]
-                        predicted_text = best.get("text", "")
-                        pred_bbox = best.get("bbox")
+                        predicted_text = detection["text"]
+                        pred_bbox = detection["bbox"]
                         if pred_bbox:
                             gt_bbox = sample["bbox"]
-                            x1g, y1g, x2g, y2g = gt_bbox
-                            gt_scaled = (x1g * sx, y1g * sy, x2g * sx, y2g * sy)
-                            iou_val = iou(pred_bbox, gt_scaled)
+                            iou_val = iou(pred_bbox, gt_bbox)
                             iou_values.append(iou_val)
                     else:
                         predicted_text = ""

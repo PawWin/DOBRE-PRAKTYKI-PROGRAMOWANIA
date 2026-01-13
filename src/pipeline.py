@@ -79,8 +79,7 @@ class PlateRecognitionPipeline:
     def process_image(
         self,
         image: np.ndarray,
-        return_scale: bool = False,
-    ) -> list[dict] | tuple[list[dict], float, float]:
+    ) -> dict | None:
         """
         Process a single image to detect and recognize license plates.
         
@@ -88,7 +87,7 @@ class PlateRecognitionPipeline:
             image: BGR image as numpy array
             
         Returns:
-            List of results with keys: 'bbox', 'text', 'confidence'
+            Single result dict with keys: 'bbox', 'text', or None if no detection.
         """
         # Optional resize for faster/cleaner detection
         image_resized, sx, sy = resize_keep_aspect(image, self.target_width)
@@ -96,7 +95,6 @@ class PlateRecognitionPipeline:
         # Detect plates (single best)
         det = self.detector.detect(image_resized)
         
-        results = []
         if det:
             # Apply padding to bbox before OCR
             x1, y1, x2, y2 = det["bbox"]
@@ -113,16 +111,16 @@ class PlateRecognitionPipeline:
 
             # Run OCR on detected plate
             text = self.ocr.recognize(crop)
-            results.append({
+            det_result = {
                 "bbox": (x1_p, y1_p, x2_p, y2_p),
                 "text": text,
-            })
+            }
+        else:
+            det_result = None
         
-        if return_scale:
-            return results, sx, sy
-        return results
+        return det_result
     
-    def process_file(self, image_path: str | Path, return_scale: bool = False) -> list[dict] | tuple[list[dict], float, float]:
+    def process_file(self, image_path: str | Path) -> dict | None:
         """
         Process an image file.
         
@@ -130,13 +128,13 @@ class PlateRecognitionPipeline:
             image_path: Path to image file
             
         Returns:
-            List of results with keys: 'bbox', 'text', 'confidence'
+            Result dict with keys: 'bbox', 'text' or None if no detection.
         """
         image = cv2.imread(str(image_path))
         if image is None:
             raise ValueError(f"Could not read image: {image_path}")
         
-        return self.process_image(image, return_scale=return_scale)
+        return self.process_image(image)
 
 
 class AnnotationBasedPipeline:
