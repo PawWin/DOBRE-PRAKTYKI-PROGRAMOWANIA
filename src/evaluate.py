@@ -367,7 +367,8 @@ class Evaluator:
                 crop = img_resized[y1_p:y2_p, x1_p:x2_p]
 
                 crops.append(crop)
-                crop_info.append((sample, sx, sy, (x1_p, y1_p, x2_p, y2_p)))
+                # Keep original detector bbox for IoU; padding is only for OCR crop
+                crop_info.append((sample, sx, sy, det["bbox"]))
             else:
                 # no detection for this sample
                 crops.append(None)

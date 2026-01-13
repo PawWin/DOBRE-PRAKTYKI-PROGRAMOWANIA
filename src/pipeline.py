@@ -71,11 +71,14 @@ class PlateRecognitionPipeline:
             y1_p = max(0, y1 - pad_y)
             x2_p = min(w, x2 + pad_x)
             y2_p = min(h, y2 + pad_y)
+            bbox_padded = (x1_p, y1_p, x2_p, y2_p)
             crop = image_resized[y1_p:y2_p, x1_p:x2_p]
 
             text = self.ocr.recognize(crop)
             det_result = {
-                "bbox": (x1_p, y1_p, x2_p, y2_p),
+                # IoU should use the raw detector box, not the padded crop box
+                "bbox": (x1, y1, x2, y2),
+                "bbox_padded": bbox_padded,
                 "text": text,
             }
         else:

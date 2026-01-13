@@ -161,7 +161,7 @@ curl http://localhost:8000/job/$JOB_ID
 
 󰣇 ~/school/DOBRE-PRAKTYKI-PROGRAMOWANIA   automatic_plate_number_recognition  !? ❯ source .venv/bin/activate
 python scripts/run_evaluation.py \
-  --num-samples 100 \
+  --num-samples 195 \
   --use-yolo \
   --yolo-model /home/wajcha/school/DOBRE-PRAKTYKI-PROGRAMOWANIA/LP-detection.pt \
   --yolo-conf 0.25 \
