@@ -1,5 +1,3 @@
-"""License plate detection using YOLOv8."""
-
 from pathlib import Path
 
 import cv2
@@ -8,17 +6,7 @@ from ultralytics import YOLO
 
 
 class PlateDetector:
-    """YOLOv8-based license plate detector."""
-    
     def __init__(self, model_path: str | None = None, conf_threshold: float = 0.25, imgsz: int | None = None):
-        """
-        Initialize the plate detector.
-        
-        Args:
-            model_path: Path to custom YOLO model. If None, uses pretrained model.
-            conf_threshold: Confidence threshold for detections
-            imgsz: Optional inference size override
-        """
         self.conf_threshold = conf_threshold
         self.imgsz = imgsz
         
@@ -31,12 +19,10 @@ class PlateDetector:
             self.model = YOLO("yolov8n.pt")
             print("Using default YOLOv8n.pt (consider training a plate-specific model)")
         
-        # Move to GPU if available
         self.device = "cuda" if self._check_cuda() else "cpu"
         print(f"PlateDetector using device: {self.device}")
     
     def _check_cuda(self) -> bool:
-        """Check if CUDA is available."""
         try:
             import torch
             return torch.cuda.is_available()
@@ -44,15 +30,6 @@ class PlateDetector:
             return False
     
     def detect(self, image: np.ndarray) -> dict | None:
-        """
-        Detect license plates in an image.
-        
-        Args:
-            image: BGR image as numpy array
-            
-        Returns:
-            Single detection dict with key 'bbox', or None if nothing found.
-        """
         results = self.model(
             image,
             device=self.device,
@@ -64,15 +41,6 @@ class PlateDetector:
         return results[0].boxes[0].xyxy[0].tolist()
     
     def detect_batch(self, images: list[np.ndarray]) -> list[dict | None]:
-        """
-        Detect license plates in a batch of images.
-        
-        Args:
-            images: List of BGR images as numpy arrays
-            
-        Returns:
-            List of single detections (or None) aligned to input images.
-        """
         results = self.model(
             images,
             device=self.device,
@@ -96,29 +64,11 @@ class PlateDetector:
 
 
 class SimplePlateDetector:
-    """
-    Simple license plate detector that uses the full image or annotation bounding boxes.
-    
-    This is useful when:
-    - Ground truth bounding boxes are available
-    - Testing OCR independently of detection
-    """
-    
     def __init__(self):
         """Initialize simple detector."""
         pass
     
     def crop_from_bbox(self, image: np.ndarray, bbox: tuple[int, int, int, int]) -> np.ndarray:
-        """
-        Crop image using provided bounding box.
-        
-        Args:
-            image: BGR image as numpy array
-            bbox: Bounding box as (x1, y1, x2, y2)
-            
-        Returns:
-            Cropped image region
-        """
         x1, y1, x2, y2 = bbox
         return image[y1:y2, x1:x2].copy()
     
@@ -128,17 +78,6 @@ class SimplePlateDetector:
         annotation: dict,
         padding_percent: float = 0.05
     ) -> np.ndarray:
-        """
-        Crop image using YOLO format annotation.
-        
-        Args:
-            image: BGR image as numpy array
-            annotation: Dict with 'x_center', 'y_center', 'width', 'height' (normalized 0-1)
-            padding_percent: Extra padding around the crop
-            
-        Returns:
-            Cropped image region
-        """
         h, w = image.shape[:2]
         
         x_center = annotation["x_center"] * w

@@ -1,5 +1,3 @@
-"""Evaluation module for license plate recognition."""
-
 import json
 import time
 import xml.etree.ElementTree as ET
@@ -17,8 +15,6 @@ from .utils import calculate_accuracy, calculate_final_grade, normalize_plate_te
 
 @dataclass
 class EvaluationResult:
-    """Results from evaluation."""
-    
     total_images: int
     correct_predictions: int
     accuracy_percent: float
@@ -49,7 +45,6 @@ class EvaluationResult:
         return "".join(parts)
     
     def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
         return {
             "total_images": self.total_images,
             "correct_predictions": self.correct_predictions,
@@ -64,7 +59,6 @@ class EvaluationResult:
 
 @dataclass
 class ImageAnnotation:
-    """Annotation for a single image."""
     image_name: str
     width: int
     height: int
@@ -73,24 +67,14 @@ class ImageAnnotation:
 
 
 class CVATDatasetLoader:
-    """Load and parse the Poland Vehicle License Plate Dataset in CVAT XML format."""
-    
     def __init__(self, dataset_path: Path):
-        """
-        Initialize dataset loader.
-        
-        Args:
-            dataset_path: Path to dataset root directory
-        """
         self.dataset_path = Path(dataset_path)
         self.photos_dir = self.dataset_path / "photos"
         self.annotations_file = self.dataset_path / "annotations.xml"
         
-        # Parse annotations
         self.annotations = self._parse_annotations()
     
     def _parse_annotations(self) -> dict[str, ImageAnnotation]:
-        """Parse CVAT XML annotations file."""
         if not self.annotations_file.exists():
             raise FileNotFoundError(f"Annotations file not found: {self.annotations_file}")
         
@@ -104,7 +88,6 @@ class CVATDatasetLoader:
             width = int(image_elem.get("width"))
             height = int(image_elem.get("height"))
             
-            # Find the box element
             box_elem = image_elem.find("box")
             if box_elem is None:
                 continue
@@ -114,7 +97,6 @@ class CVATDatasetLoader:
             xbr = float(box_elem.get("xbr"))
             ybr = float(box_elem.get("ybr"))
             
-            # Find plate number attribute
             plate_text = ""
             for attr_elem in box_elem.findall("attribute"):
                 if attr_elem.get("name") == "plate number":
@@ -132,16 +114,6 @@ class CVATDatasetLoader:
         return annotations
     
     def load_samples(self, limit: int | None = None, shuffle: bool = False) -> list[dict]:
-        """
-        Load samples from the dataset.
-        
-        Args:
-            limit: Maximum number of samples to load
-            shuffle: Whether to shuffle samples
-            
-        Returns:
-            List of sample dicts with 'image_path', 'bbox', 'plate_text'
-        """
         samples = []
         
         image_names = list(self.annotations.keys())
@@ -175,16 +147,6 @@ class CVATDatasetLoader:
         test_ratio: float = 0.3,
         seed: int = 42
     ) -> tuple[list[dict], list[dict]]:
-        """
-        Split dataset into train and test sets.
-        
-        Args:
-            test_ratio: Ratio of samples for testing (default 0.3 = 30%)
-            seed: Random seed for reproducibility
-            
-        Returns:
-            Tuple of (train_samples, test_samples)
-        """
         import random
         
         all_samples = self.load_samples()
@@ -199,8 +161,6 @@ class CVATDatasetLoader:
 
 
 class Evaluator:
-    """Evaluator for license plate recognition system."""
-    
     def __init__(
         self,
         dataset_path: Path,
@@ -273,21 +233,8 @@ class Evaluator:
         use_test_split: bool = False,
         use_yolo: bool | None = None,
     ) -> EvaluationResult:
-        """
-        Run evaluation on the dataset.
-        
-        Args:
-            num_samples: Number of samples to evaluate
-            verbose: Whether to show progress bar
-            use_test_split: Whether to use only test split (30% of data)
-            use_yolo: Override to enable YOLO detection (default: initializer setting)
-            
-        Returns:
-            EvaluationResult with all metrics
-        """
         effective_use_yolo = self.use_yolo if use_yolo is None else use_yolo
 
-        # Load samples
         if use_test_split:
             _, samples = self.loader.get_train_test_split(test_ratio=0.3)
             if len(samples) > num_samples:
@@ -303,14 +250,11 @@ class Evaluator:
         predictions = []
         iou_values = []
         
-        # Start timing
         start_time = time.time()
         
-        # Process each sample
         preloaded = self._preload_samples(samples)
 
         if effective_use_yolo and self.batch_size > 1:
-            # Batch mode for YOLO
             chunk = []
             chunk_samples = []
             iterator = tqdm(preloaded, desc="Processing (batch)") if verbose else preloaded
@@ -328,13 +272,15 @@ class Evaluator:
             for sample, image in iterator:
                 if effective_use_yolo:
                     # YOLO detection + OCR (single)
-                    detection = self.pipeline_yolo.process_image(image)
+                    detection, sx, sy = self.pipeline_yolo.process_image(image, return_scale=True)
                     if detection:
                         predicted_text = detection["text"]
                         pred_bbox = detection["bbox"]
                         if pred_bbox:
                             gt_bbox = sample["bbox"]
-                            iou_val = iou(pred_bbox, gt_bbox)
+                            x1g, y1g, x2g, y2g = gt_bbox
+                            gt_scaled = (x1g * sx, y1g * sy, x2g * sx, y2g * sy)
+                            iou_val = iou(pred_bbox, gt_scaled)
                             iou_values.append(iou_val)
                     else:
                         predicted_text = ""
@@ -357,20 +303,15 @@ class Evaluator:
                     "correct": normalize_plate_text(predicted_text) == normalize_plate_text(ground_truth),
                 })
         
-        # Calculate total time
         total_time = time.time() - start_time
         
-        # Scale time to 100 images for grading
         actual_samples = len(predictions)
         time_per_100 = (total_time / actual_samples) * 100 if actual_samples > 0 else 0
         
-        # Calculate accuracy
         accuracy = calculate_accuracy(predictions, ground_truths)
         
-        # Calculate grade
         grade = calculate_final_grade(accuracy, time_per_100)
         
-        # Count correct
         correct = sum(1 for p in predictions_list if p["correct"])
         
         mean_iou = (sum(iou_values) / len(iou_values)) if iou_values else None
@@ -387,7 +328,6 @@ class Evaluator:
         )
 
     def _preload_samples(self, samples: list[dict]) -> list[tuple[dict, np.ndarray]]:
-        """Load images in parallel to overlap I/O with compute."""
         loaded: list[tuple[dict, np.ndarray]] = []
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(cv2.imread, str(sample["image_path"])) for sample in samples]
@@ -406,12 +346,11 @@ class Evaluator:
         predictions_list: list[dict],
         iou_values: list[float],
     ) -> None:
-        """Process a batch of images with YOLO + OCR."""
         images = [item[0] for item in chunk]
         scales = [(item[1], item[2]) for item in chunk]
         detections_batch = self.pipeline_yolo.detector.detect_batch(images)
         crops = []
-        crop_info = []  # (sample, sx, sy, bbox_padded)
+        crop_info = []
 
         for det, (sx, sy), sample, img_resized in zip(detections_batch, scales, chunk_samples, images):
             if det:

@@ -1,20 +1,9 @@
-#!/usr/bin/env python3
-"""Download Poland Vehicle License Plate Dataset from Kaggle."""
 
 import shutil
 from pathlib import Path
 
 
 def download_dataset(target_dir: Path | None = None) -> Path:
-    """
-    Download the Poland Vehicle License Plate Dataset using kagglehub.
-    
-    Args:
-        target_dir: Optional target directory. If None, uses kagglehub default cache.
-        
-    Returns:
-        Path to the downloaded dataset
-    """
     import kagglehub
     
     print("Downloading Poland Vehicle License Plate Dataset...")

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Run evaluation on the license plate dataset."""
 
 import argparse
 import sys
@@ -33,7 +32,6 @@ def find_dataset_path() -> Path | None:
 
 
 def main():
-    """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Evaluate license plate recognition system"
     )
