@@ -94,10 +94,14 @@ class PlateRecognitionPipeline:
 
         # Detect plates (single best)
         det = self.detector.detect(image_resized)
-        
+
         if det:
+            # Normalize bbox format (dict with 'bbox' vs raw list/tuple)
+            if isinstance(det, dict):
+                x1, y1, x2, y2 = det["bbox"]
+            else:
+                x1, y1, x2, y2 = map(int, det)
             # Apply padding to bbox before OCR
-            x1, y1, x2, y2 = det["bbox"]
             h, w = image_resized.shape[:2]
             box_w = x2 - x1
             box_h = y2 - y1

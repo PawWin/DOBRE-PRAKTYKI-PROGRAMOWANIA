@@ -61,18 +61,7 @@ class PlateDetector:
             imgsz=self.imgsz,
             save=False,
         )
-        
-        for result in results:
-            boxes = result.boxes
-            if boxes is None:
-                continue
-            if len(boxes) == 0:
-                continue
-            box = boxes[0]
-            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-            return {"bbox": (x1, y1, x2, y2)}
-        
-        return None
+        return results[0].boxes[0].xyxy[0].tolist()
     
     def detect_batch(self, images: list[np.ndarray]) -> list[dict | None]:
         """
