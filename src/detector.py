@@ -43,97 +43,65 @@ class PlateDetector:
         except ImportError:
             return False
     
-    def detect(self, image: np.ndarray, save_dir: str | None = None, save: bool = False) -> list[dict]:
+    def detect(self, image: np.ndarray) -> dict | None:
         """
         Detect license plates in an image.
         
         Args:
             image: BGR image as numpy array
-            save_dir: Optional directory to save annotated detections
-            save: Whether to save annotated image
             
         Returns:
-            List of detections with keys: 'bbox', 'confidence', 'crop'
+            Single detection dict with key 'bbox', or None if nothing found.
         """
-        project = None
-        name = None
-        if save and save_dir:
-            # Ultralytics expects project/name; we use project=save_dir, name="eval"
-            project = Path(save_dir).resolve()
-            name = "eval"
         results = self.model(
             image,
             device=self.device,
             verbose=False,
             conf=self.conf_threshold,
             imgsz=self.imgsz,
-            save=save,
-            project=project if save else None,
-            name=name if save else None,
-            exist_ok=True,
+            save=False,
         )
         
-        detections = []
         for result in results:
             boxes = result.boxes
             if boxes is None:
                 continue
-                
-            for box in boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                conf = float(box.conf[0])
-                
-                detections.append({
-                    "bbox": (x1, y1, x2, y2),
-                    "confidence": conf,
-                    "crop": image[y1:y2, x1:x2],
-                })
+            if len(boxes) == 0:
+                continue
+            box = boxes[0]
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            return {"bbox": (x1, y1, x2, y2)}
         
-        return detections
+        return None
     
-    def detect_batch(self, images: list[np.ndarray], save_dir: str | None = None, save: bool = False) -> list[list[dict]]:
+    def detect_batch(self, images: list[np.ndarray]) -> list[dict | None]:
         """
         Detect license plates in a batch of images.
         
         Args:
             images: List of BGR images as numpy arrays
-            save_dir: Optional directory to save annotated detections
-            save: Whether to save annotated images
             
         Returns:
-            List of detection lists (one per image)
+            List of single detections (or None) aligned to input images.
         """
-        project = None
-        name = None
-        if save and save_dir:
-            project = Path(save_dir).resolve()
-            name = "eval"
         results = self.model(
             images,
             device=self.device,
             verbose=False,
             conf=self.conf_threshold,
             imgsz=self.imgsz,
-            save=save,
-            project=project if save else None,
-            name=name if save else None,
-            exist_ok=True,
+            save=False,
         )
         
         all_detections = []
         for result, image in zip(results, images):
-            detections = []
             boxes = result.boxes
-            if boxes is not None:
-                for box in boxes:
-                    x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
-                    conf = float(box.conf[0])
-                    detections.append({
-                        "bbox": (x1, y1, x2, y2),
-                        "confidence": conf,
-                        "crop": image[y1:y2, x1:x2],
-                    })
-            all_detections.append(detections)
+            if boxes is not None and len(boxes) > 0:
+                box = boxes[0]
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                all_detections.append({"bbox": (x1, y1, x2, y2)})
+            else:
+                all_detections.append(None)
         
         return all_detections
 

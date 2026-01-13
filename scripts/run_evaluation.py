@@ -108,9 +108,6 @@ def main():
     parser.add_argument("--ocr-version", type=str, default="PP-OCRv4", help="PaddleOCR version (default PP-OCRv4)")
     parser.add_argument("--batch-size", type=int, default=1, help="Batch size for YOLO inference (default 1)")
     parser.add_argument("--ocr-batch-size", type=int, default=1, help="Batch size for OCR (default 1 - per crop)")
-    parser.add_argument("--save-detections", action="store_true", help="Save YOLO detection previews (up to limit)")
-    parser.add_argument("--save-det-limit", type=int, default=10, help="How many images to save (default 10)")
-    parser.add_argument("--save-det-dir", type=Path, default=Path("runs/detections"), help="Directory for saved detections")
     parser.add_argument("--polish-fix", action="store_true", help="Apply heuristic corrections for Polish plates")
     
     args = parser.parse_args()
@@ -154,9 +151,6 @@ def main():
         ocr_version=args.ocr_version,
         batch_size=args.batch_size,
         ocr_batch_size=args.ocr_batch_size,
-        save_detections=args.save_detections,
-        save_det_limit=args.save_det_limit,
-        save_det_dir=args.save_det_dir,
         correct_polish=args.polish_fix,
     )
     

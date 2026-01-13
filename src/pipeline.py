@@ -86,8 +86,6 @@ class PlateRecognitionPipeline:
         self,
         image: np.ndarray,
         return_scale: bool = False,
-        save: bool = False,
-        save_dir: str | None = None,
     ) -> list[dict] | tuple[list[dict], float, float]:
         """
         Process a single image to detect and recognize license plates.
@@ -101,11 +99,11 @@ class PlateRecognitionPipeline:
         # Optional resize for faster/cleaner detection
         image_resized, sx, sy = resize_keep_aspect(image, self.target_width)
 
-        # Detect plates
-        detections = self.detector.detect(image_resized, save_dir=save_dir, save=save)
+        # Detect plates (single best)
+        det = self.detector.detect(image_resized)
         
         results = []
-        for det in detections:
+        if det:
             # Apply padding to bbox before OCR
             x1, y1, x2, y2 = det["bbox"]
             h, w = image_resized.shape[:2]
@@ -119,12 +117,11 @@ class PlateRecognitionPipeline:
             y2_p = min(h, y2 + pad_y)
             crop = image_resized[y1_p:y2_p, x1_p:x2_p]
 
-            # Run OCR on each detected plate
+            # Run OCR on detected plate
             text = self.ocr.recognize(crop)
             results.append({
                 "bbox": (x1_p, y1_p, x2_p, y2_p),
                 "text": text,
-                "confidence": det["confidence"]
             })
         
         if return_scale:

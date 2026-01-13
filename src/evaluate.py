@@ -219,9 +219,6 @@ class Evaluator:
         ocr_version: str = "PP-OCRv4",
         batch_size: int = 1,
         ocr_batch_size: int = 1,
-        save_detections: bool = False,
-        save_det_limit: int = 10,
-        save_det_dir: Path | None = None,
         correct_polish: bool = False,
     ):
         """
@@ -244,9 +241,6 @@ class Evaluator:
             ocr_version: PaddleOCR version to use
             batch_size: Batch size for YOLO inference (use_yolo mode)
             ocr_batch_size: Batch size for OCR (use_yolo mode)
-            save_detections: Save YOLO annotated outputs for a subset
-            save_det_limit: Max number of images to save
-            save_det_dir: Directory for saved detections
             correct_polish: Apply Polish plate correction heuristics
         """
         self.loader = CVATDatasetLoader(dataset_path)
@@ -278,14 +272,6 @@ class Evaluator:
             correct_polish=correct_polish,
         )
         self.use_yolo = use_yolo
-        self.save_detections = save_detections
-        self.save_det_limit = save_det_limit
-        self.save_det_dir = save_det_dir if save_det_dir else Path("runs/detections")
-        if self.save_detections and batch_size > 1:
-            print("Warning: save_detections enabled -> forcing batch_size=1 to save visuals.")
-            batch_size = 1
-        if self.save_detections:
-            self.save_det_dir.mkdir(parents=True, exist_ok=True)
         self.batch_size = max(1, batch_size)
         self.ocr_batch_size = max(1, ocr_batch_size)
     
@@ -330,7 +316,6 @@ class Evaluator:
         start_time = time.time()
         
         # Process each sample
-        saved_count = 0
         preloaded = self._preload_samples(samples)
 
         if effective_use_yolo and self.batch_size > 1:
@@ -352,15 +337,9 @@ class Evaluator:
             for sample, image in iterator:
                 if effective_use_yolo:
                     # YOLO detection + OCR (single)
-                    save_flag = False
-                    save_dir = None
-                    if self.save_detections and saved_count < self.save_det_limit:
-                        save_flag = True
-                        save_dir = str(self.save_det_dir)
-                        saved_count += 1
-                    detections, sx, sy = self.pipeline_yolo.process_image(image, return_scale=True, save=save_flag, save_dir=save_dir)
+                    detections, sx, sy = self.pipeline_yolo.process_image(image, return_scale=True)
                     if detections:
-                        best = max(detections, key=lambda d: d.get("confidence", 0))
+                        best = detections[0]
                         predicted_text = best.get("text", "")
                         pred_bbox = best.get("bbox")
                         if pred_bbox:
@@ -422,7 +401,7 @@ class Evaluator:
     def _preload_samples(self, samples: list[dict]) -> list[tuple[dict, np.ndarray]]:
         """Load images in parallel to overlap I/O with compute."""
         loaded: list[tuple[dict, np.ndarray]] = []
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             futures = [executor.submit(cv2.imread, str(sample["image_path"])) for sample in samples]
             for sample, future in zip(samples, futures):
                 image = future.result()
@@ -446,10 +425,9 @@ class Evaluator:
         crops = []
         crop_info = []  # (sample, sx, sy, bbox_padded)
 
-        for dets, (sx, sy), sample, img_resized in zip(detections_batch, scales, chunk_samples, images):
-            if dets:
-                best = max(dets, key=lambda d: d.get("confidence", 0))
-                x1, y1, x2, y2 = best["bbox"]
+        for det, (sx, sy), sample, img_resized in zip(detections_batch, scales, chunk_samples, images):
+            if det:
+                x1, y1, x2, y2 = det["bbox"]
                 h, w = img_resized.shape[:2]
                 box_w = x2 - x1
                 box_h = y2 - y1
